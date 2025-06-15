@@ -1,0 +1,55 @@
+<?php
+require 'vendor/autoload.php';  // تحتاج تثبيت PayPal SDK عبر Composer
+
+use PayPal\Rest\ApiContext;
+use PayPal\Auth\OAuthTokenCredential;
+use PayPal\Api\Payer;
+use PayPal\Api\Amount;
+use PayPal\Api\Transaction;
+use PayPal\Api\RedirectUrls;
+use PayPal\Api\Payment;
+
+// إعداد API Context
+$apiContext = new ApiContext(
+    new OAuthTokenCredential(
+        'YOUR_CLIENT_ID',     // استبدل بـ Client ID
+        'YOUR_CLIENT_SECRET'  // استبدل بـ Secret
+    )
+);
+
+// إنشاء طريقة الدفع (PayPal)
+$payer = new Payer();
+$payer->setPaymentMethod('paypal');
+
+// إعداد مبلغ الدفع
+$amount = new Amount();
+$amount->setTotal('10.00');  // المبلغ المطلوب
+$amount->setCurrency('USD');
+
+// إعداد تفاصيل المعاملة
+$transaction = new Transaction();
+$transaction->setAmount($amount);
+$transaction->setDescription('Test payment with PayPal');
+
+// إعداد روابط إعادة التوجيه بعد الدفع أو الإلغاء
+$redirectUrls = new RedirectUrls();
+$redirectUrls->setReturnUrl("https://your-site.com/payment-success.php")
+             ->setCancelUrl("https://your-site.com/payment-cancel.php");
+
+// إنشاء طلب الدفع
+$payment = new Payment();
+$payment->setIntent('sale')
+        ->setPayer($payer)
+        ->setTransactions(array($transaction))
+        ->setRedirectUrls($redirectUrls);
+
+try {
+    $payment->create($apiContext);
+    // إعادة توجيه المستخدم إلى صفحة PayPal للدفع
+    header("Location: " . $payment->getApprovalLink());
+    exit;
+} catch (Exception $ex) {
+    echo "حدث خطأ: " . $ex->getMessage();
+    exit(1);
+}
+?>
